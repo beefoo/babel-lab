@@ -7,9 +7,7 @@ module.exports = {
   include: {
     dest: publicAssets + '/js/',
     opt: {},
-    src: [
-      sourceAssets + '/speech2music.js'
-    ]
+    src: sourceAssets + '/js/*.js'
   },
   sass: {
     src: sourceAssets + "/scss/**/*.scss",

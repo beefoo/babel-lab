@@ -28,8 +28,8 @@ var uglify = require('gulp-uglify');
 gulp.task('js', function() {
   gulp.src(config.include.src)
     // include non-minified version
-    .pipe(include(config.include.opt)).on('error', console.error.bind(console)))
-    .pipe(gulp.dest(config.include.dest));
+    .pipe(include(config.include.opt).on('error', console.error.bind(console)))
+    .pipe(gulp.dest(config.include.dest))
     // and the minified version
     .pipe(uglify(config.uglify.opt).on('error', console.error.bind(console)))
     .pipe(rename({ extname: '.min.js' }))

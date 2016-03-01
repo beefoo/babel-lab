@@ -7,12 +7,6 @@ window.app = {
   routers: {},
   initialize: function(){
 
-    // Debug
-    DEBUG && console.log("Project", PROJECT);
-    PubSub.subscribe('auth.validation.success', function(ev, user) {
-      DEBUG && console.log('User', user);
-    });
-
     // load the main router
     var mainRouter = new app.routers.DefaultRouter();
 
@@ -26,7 +20,7 @@ window.app = {
       pushState:pushState
     });
 
-    Backbone.history.start();
+    // Backbone.history.start();
   }
 };
 

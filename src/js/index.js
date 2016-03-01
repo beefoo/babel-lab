@@ -1,8 +1,8 @@
-//=require vendor/jquery-1.12.1.min.js
-//=require vendor/json2.js
-//=require vendor/underscore-min.js
-//=require vendor/backbone-min.js
-//=require core/utilities.js
-//=require core/components.js
-//=require core/app.js
-//=require core/router.js
+//=include vendor/jquery-1.12.1.min.js
+//=include vendor/json2.js
+//=include vendor/underscore-min.js
+//=include vendor/backbone-min.js
+//=include core/utilities.js
+//=include core/components.js
+//=include core/app.js
+//=include core/router.js
