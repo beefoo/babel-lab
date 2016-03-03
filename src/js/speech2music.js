@@ -2,7 +2,9 @@
 //=include vendor/json2.js
 //=include vendor/underscore-min.js
 //=include vendor/backbone-min.js
+//=include vendor/pubsub.min.js
 //=include core/utilities.js
 //=include core/components.js
 //=include core/app.js
+//=include components/mic2notes.js
 //=include core/router.js

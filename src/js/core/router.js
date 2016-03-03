@@ -13,6 +13,8 @@ app.routers.DefaultRouter = Backbone.Router.extend({
   speech2music: function(){
     var routeData = this._getRouteData();
     console.log('Route', routeData);
+
+    var m2n = new mic2Notes();
   },
 
   _getRouteData: function(){
