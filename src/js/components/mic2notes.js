@@ -7,11 +7,13 @@ var mic2Notes = (function() {
   function mic2Notes(options) {
     var defaults = {
       fftsize: 2048,
+      sampleSize: 12,
+      sampleThreshold: 0.6,
       onNoteEnd: function(note, time, duration){
-        console.log(note, time, duration);
+        console.log('End note', note.note, time, duration);
       },
       onNoteStart: function(note, time){
-        console.log(note, time);
+        console.log('Start note', note.note, time);
       }
     };
     var options = _.extend(defaults, options);
@@ -25,23 +27,72 @@ var mic2Notes = (function() {
     var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
     this.ctx = new AudioContext();
 
-    this.listenForMicrophone();
+    // retrieve note frequencies
+    this.note_frequences = NOTE_FREQUENCIES || [];
+
+    if (this.note_frequences.length) this.listenForMicrophone();
   };
 
   mic2Notes.prototype.getNoteFromFrequencies = function(freq){
-    var freqLen = freq.length; // should be 1024
-    var freqGroups = [];
+    // var freqLen = freq.length; // should be 1024
+    // initialize note to empty
+    var _this = this,
+        sampleThreshold = this.opt.sampleThreshold,
+        sampleSize = this.opt.sampleSize,
+        note = this._emptyNote();
 
-    // Iterate over the frequencies.
-    for (var i = 0; i < freqLen; i++) {
-      var logIndex = this._logScale(i, freqLen);
+    // Map to tuples to preserve index
+    freq = _.map(freq, function(f, i){ return [i, f/255.0]; });
 
-      // a number between 0 and 255
-      var value = freq[logIndex];
-      var freq = this._indexToFreq(logIndex);
+    // Filter out values too low
+    freq = _.filter(freq, function(f){ return f[1] > sampleThreshold; });
+
+    if (freq.length >= sampleSize) {
+
+      // Sort by values
+      freq = _.sortBy(freq, function(f){ return -f[1]; });
+
+      // Sample
+      freq = freq.slice(0, sampleSize-1);
+
+      // Map to notes
+      var notes = _.map(freq, function(f){
+        return _this.getNoteFromFrequency(_this._indexToFreq(f[0]));
+      });
+
+      // Group the notes
+      var noteGroups = _.groupBy(notes, function(note){ return note.note; });
+
+      // Choose the biggest group
+      var bestNoteGroup = _.max(noteGroups, function(noteGroup){ return noteGroup.length; });
+      if (bestNoteGroup.length) {
+        note = bestNoteGroup[0];
+      }
     }
 
-    return '--';
+    return note;
+  };
+
+  mic2Notes.prototype.getNoteFromFrequency = function(freq){
+    var notes = this.note_frequences,
+        noteCount = notes.length,
+        note = this._emptyNote();
+
+    // assumes notes are sorted
+    for (var i=0; i<noteCount; i++) {
+      var n = notes[i];
+      if (freq < n.hz && i > 0) {
+        var n0 = notes[i-1];
+        note = n;
+        // find the closest frequency
+        if ((freq-n0.hz) < (n.hz-freq)) {
+          note = n0;
+        }
+        break;
+      }
+    }
+
+    return note;
   };
 
   mic2Notes.prototype.listen = function(){
@@ -66,7 +117,7 @@ var mic2Notes = (function() {
     var note = this.getNoteFromFrequencies(freq);
 
     // note has changed
-    if (this.lastNote != note) {
+    if (!this.lastNote || this.lastNote.note != note.note) {
       if (this.lastNote && this.noteStartTime) {
         var noteDuration = now - this.noteStartTime;
         this.opt.onNoteEnd(this.lastNote, now, noteDuration);
@@ -131,6 +182,10 @@ var mic2Notes = (function() {
 
   mic2Notes.prototype.onStreamError = function(e){
     alert(e);
+  };
+
+  mic2Notes.prototype._emptyNote = function(){
+    return _.clone({note: "--",hz: -1,midi: -1});
   };
 
   mic2Notes.prototype._getFFTBinCount = function(){

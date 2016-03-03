@@ -3,6 +3,7 @@
 //=include vendor/underscore-min.js
 //=include vendor/backbone-min.js
 //=include vendor/pubsub.min.js
+//=include config/note_frequencies.js
 //=include core/utilities.js
 //=include core/components.js
 //=include core/app.js

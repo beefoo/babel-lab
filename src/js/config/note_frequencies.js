@@ -1,4 +1,4 @@
-var FREQUENCIES = [
+var NOTE_FREQUENCIES = [
   {
   note: "C0",
   hz: 16.352,
