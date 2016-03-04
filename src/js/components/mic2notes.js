@@ -15,6 +15,9 @@ var mic2Notes = (function() {
       },
       onNoteStart: function(note, time){
         console.log('Start note', note.key, time);
+      },
+      onNoteUpdate: function(note, time, duration){
+        console.log('Update note', note.key, time, duration);
       }
     };
     var options = _.extend(defaults, options);
@@ -30,7 +33,7 @@ var mic2Notes = (function() {
     this.sampleRate = this.ctx.sampleRate;
 
     // retrieve notes
-    this.notes = NOTES;
+    this.notes = options.notes;
 
     this.listenForMicrophone();
   };

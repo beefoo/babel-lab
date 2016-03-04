@@ -702,6 +702,9 @@ var mic2Notes = (function() {
       },
       onNoteStart: function(note, time){
         console.log('Start note', note.key, time);
+      },
+      onNoteUpdate: function(note, time, duration){
+        console.log('Update note', note.key, time, duration);
       }
     };
     var options = _.extend(defaults, options);
@@ -717,7 +720,7 @@ var mic2Notes = (function() {
     this.sampleRate = this.ctx.sampleRate;
 
     // retrieve notes
-    this.notes = NOTES;
+    this.notes = options.notes;
 
     this.listenForMicrophone();
   };
@@ -887,6 +890,40 @@ var mic2Notes = (function() {
 
 })();
 
+app.views.Speech2Music = Backbone.View.extend({
+
+  el: '#main',
+
+  initialize: function(data){
+    this.loadMic2Notes();
+  },
+
+  loadMic2Notes: function(){
+    var _this = this;
+
+    var m2n = new mic2Notes({
+      notes: NOTES,
+      onNoteEnd: function(note, time, duration){
+        // console.log('End note', note.key, time, duration);
+        // $('#note').text(note.key);
+      },
+      onNoteStart: function(note, time){
+        // console.log('Start note', note.key, time);
+        _this.$('#note').text(note.key);
+      },
+      onNoteUpdate: function(note, time, duration){
+        // console.log('End note', note.key, time, duration);
+        _this.$('#note').text(note.key);
+      }
+    });
+  },
+
+  render: function() {
+    return this;
+  }
+
+});
+
 app.routers.DefaultRouter = Backbone.Router.extend({
 
   routes: {
@@ -895,24 +932,12 @@ app.routers.DefaultRouter = Backbone.Router.extend({
   },
 
   index: function() {
-    var routeData = this._getRouteData();
-    console.log('Route', routeData);
+
   },
 
   speech2music: function(){
-    var routeData = this._getRouteData();
-    console.log('Route', routeData);
 
-    var m2n = new mic2Notes({
-      onNoteEnd: function(note, time, duration){
-        // console.log('End note', note.key, time, duration);
-        // $('#note').text(note.key);
-      },
-      onNoteStart: function(note, time){
-        // console.log('Start note', note.key, time);
-        $('#note').text(note.key);
-      }
-    });
+    var main = new app.views.Speech2Music();
   },
 
   _getRouteData: function(){
