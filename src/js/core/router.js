@@ -16,13 +16,12 @@ app.routers.DefaultRouter = Backbone.Router.extend({
 
     var m2n = new mic2Notes({
       onNoteEnd: function(note, time, duration){
-        console.log('End note', note.note, time, duration);
-        $('#note').append(
-          $('<span>'+note.note+', </span>')
-        );
+        // console.log('End note', note.key, time, duration);
+        // $('#note').text(note.key);
       },
       onNoteStart: function(note, time){
-        console.log('Start note', note.note, time);
+        // console.log('Start note', note.key, time);
+        $('#note').text(note.key);
       }
     });
   },

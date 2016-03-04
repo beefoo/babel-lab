@@ -8,16 +8,13 @@ var mic2Notes = (function() {
   function mic2Notes(options) {
     var defaults = {
       fftsize: 2048,
-      freqMin: 60,
-      freqMax: 1200,
-      noteDiffTolerance: 2,
-      sampleSize: 30,
-      sampleThreshold: 0.6,
+      minRMS: 0.01,
+      pitchCorrelationThreshold: 0.9,
       onNoteEnd: function(note, time, duration){
-        console.log('End note', note.note, time, duration);
+        console.log('End note', note.key, time, duration);
       },
       onNoteStart: function(note, time){
-        console.log('Start note', note.note, time);
+        console.log('Start note', note.key, time);
       }
     };
     var options = _.extend(defaults, options);
@@ -30,78 +27,59 @@ var mic2Notes = (function() {
     // init audio context
     var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
     this.ctx = new AudioContext();
+    this.sampleRate = this.ctx.sampleRate;
 
-    // retrieve note frequencies
-    this.note_frequences = _.filter(NOTE_FREQUENCIES, function(note){ return note.hz >= options.freqMin && note.hz <= options.freqMax }) || [];
+    // retrieve notes
+    this.notes = NOTES;
 
-    // retrieve frequency index
-    this.frequencyIndex = this._getFrequencyIndex();
-
-    if (this.note_frequences.length) this.listenForMicrophone();
+    this.listenForMicrophone();
   };
 
-  mic2Notes.prototype.getNoteFromFrequencies = function(freq){
-    // var freqLen = freq.length; // should be 1024
-    // initialize note to empty
-    var _this = this,
-        freqMin = this.opt.freqMin,
-        freqMax = this.opt.freqMax,
-        sampleThreshold = this.opt.sampleThreshold,
-        sampleSize = this.opt.sampleSize,
-        note = this._emptyNote();
+  mic2Notes.prototype.freqToPitch = function(freq){
+    var freqLen = freq.length,
+        maxSamples = Math.floor(freqLen/2),
+        sampleRate = this.sampleRate,
+        pitchCorrelationThreshold = this.opt.pitchCorrelationThreshold;
 
-    // Map to triples to preserve index [index, value, freq]
-    freq = _.map(freq, function(f, i){ return [i, f/255.0, _this.frequencyIndex[i]]; });
+    // check to see if enough signal
+    var rms = this._rootMeanSquare(freq);
+    if (rms < this.opt.minRMS) return -1;
 
-    // Filter out values too low or out of range
-    freq = _.filter(freq, function(f){ return f[1] > sampleThreshold && f[2] >= freqMin && f[2] <= freqMax; });
+    var pitch = -1;
+    var best_offset = -1;
+    var best_correlation = 0;
+    var foundGoodCorrelation = false;
+    var correlations = new Array(maxSamples);
 
-    if (freq.length >= sampleSize) {
+    var lastCorrelation=1;
+    for (var offset = 0; offset < maxSamples; offset++) {
 
-      // Sort by values
-      freq = _.sortBy(freq, function(f){ return -f[1]; });
-
-      // Sample
-      freq = freq.slice(0, sampleSize-1);
-
-      // Map to notes
-      var notes = _.map(freq, function(f){
-        return _this.getNoteFromFrequency(_this._indexToFreq(f[0]));
-      });
-
-      // Group the notes
-      var noteGroups = _.groupBy(notes, function(note){ return note.note; });
-
-      // Choose the biggest group
-      var bestNoteGroup = _.max(noteGroups, function(noteGroup){ return noteGroup.length; });
-      if (bestNoteGroup.length) {
-        note = bestNoteGroup[0];
+      var correlation = 0;
+      for (var i=0; i<maxSamples; i++) {
+        correlation += Math.abs((freq[i])-(freq[i+offset]));
       }
-    }
-
-    return note;
-  };
-
-  mic2Notes.prototype.getNoteFromFrequency = function(freq){
-    var notes = this.note_frequences,
-        noteCount = notes.length,
-        note = this._emptyNote();
-
-    // assumes notes are sorted
-    for (var i=0; i<noteCount; i++) {
-      var n = notes[i];
-      if (freq < n.hz && i > 0) {
-        var n0 = notes[i-1];
-        note = n;
-        // find the closest frequency
-        if ((freq-n0.hz) < (n.hz-freq)) {
-          note = n0;
+      correlation = 1 - (correlation/maxSamples);
+      correlations[offset] = correlation;
+      if ((correlation > pitchCorrelationThreshold) && (correlation > lastCorrelation)) {
+        foundGoodCorrelation = true;
+        if (correlation > best_correlation) {
+          best_correlation = correlation;
+          best_offset = offset;
         }
+
+      } else if (foundGoodCorrelation) {
+        var shift = (correlations[best_offset+1] - correlations[best_offset-1])/correlations[best_offset];
+        pitch = sampleRate/(best_offset+(8*shift));
         break;
       }
+      lastCorrelation = correlation;
+    }
+    if (best_correlation > this.opt.minRMS) {
+      // console.log("f = " + sampleRate/best_offset + "Hz (rms: " + rms + " confidence: " + best_correlation + ")")
+      pitch = sampleRate/best_offset;
     }
 
-    return note;
+    return pitch;
   };
 
   mic2Notes.prototype.listen = function(){
@@ -118,15 +96,17 @@ var mic2Notes = (function() {
     else this.startTime = now;
     this.lastTime = now;
 
-    // retrieve frequence data
-    var freq = new Uint8Array(this.analyzer.frequencyBinCount);
-    this.analyzer.getByteFrequencyData(freq);
+    // put frequency data into buffer (1/2 of fftsize)
+    var buffer = new Float32Array(this.analyzer.frequencyBinCount);
+    this.analyzer.getFloatTimeDomainData(buffer);
 
+    // retrieve pitch
+    var pitch = this.freqToPitch(buffer);
     // retrieve note
-    var note = this.getNoteFromFrequencies(freq);
+    var note = this.pitchToNote(pitch);
 
     // note has changed
-    if (!this.lastNote || this.lastNote.note != note.note) {
+    if (!this.lastNote || this.lastNote.key != note.key) {
       if (this.lastNote && this.noteStartTime) {
         var noteDuration = now - this.noteStartTime;
         this.opt.onNoteEnd(this.lastNote, now, noteDuration);
@@ -166,6 +146,20 @@ var mic2Notes = (function() {
     this.listening = false;
   };
 
+  mic2Notes.prototype.pitchToNote = function(pitch){
+    var notes = this.notes,
+        noteLen = notes.length,
+        note = this._emptyNote();
+
+    if (pitch > 0) {
+      var noteNum = 12 * (Math.log(pitch/440)/Math.log(2));
+      noteNum = Math.round(noteNum) + 69;
+      note = notes[noteNum % noteLen];
+    }
+
+    return note;
+  };
+
   // Setup analyzer after microphone stream is initialized
   mic2Notes.prototype.onStream = function(stream){
     var input = this.ctx.createMediaStreamSource(stream);
@@ -187,38 +181,19 @@ var mic2Notes = (function() {
   };
 
   mic2Notes.prototype._emptyNote = function(){
-    return _.clone({note: "--",hz: -1,midi: -1});
+    return _.clone({key: "--", midi: -1});
   };
 
-  mic2Notes.prototype._getFFTBinCount = function(){
-    return this.opt.fftsize / 2;
-  };
+  mic2Notes.prototype._rootMeanSquare = function(freq) {
+    var rms = 0,
+        freqLen = freq.length;
 
-  mic2Notes.prototype._getFrequencyIndex = function(){
-    var FFTBinCount = this._getFFTBinCount();
-    var index = [];
-
-    for (var i=0; i<FFTBinCount; i++) {
-      index.push(this._indexToFreq(i));
+    for (var i=0; i<freqLen; i++) {
+      var val = freq[i];
+      rms += val * val;
     }
 
-    return index;
-  };
-
-  mic2Notes.prototype._indexToFreq = function(index) {
-    var nyquist = this.ctx.sampleRate/2;
-    return nyquist/this._getFFTBinCount() * index;
-  };
-
-  mic2Notes.prototype._logBase = function(val, base) {
-    return Math.log(val) / Math.log(base);
-  };
-
-  mic2Notes.prototype._logScale = function(index, total, opt_base) {
-    var base = opt_base || 2;
-    var logmax = this._logBase(total + 1, base);
-    var exp = logmax * index / total;
-    return Math.round(Math.pow(base, exp) - 1);
+    return Math.sqrt(rms/freqLen);
   };
 
   return mic2Notes;
