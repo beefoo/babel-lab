@@ -2,12 +2,16 @@
  Microphone To Music Notes
    Listens to frequency data from microphone and emits music notes
    Heavily inspired by: https://github.com/borismus/spectrogram
+   and: https://github.com/cwilso/PitchDetect
 */
 var mic2Notes = (function() {
   function mic2Notes(options) {
     var defaults = {
       fftsize: 2048,
-      sampleSize: 12,
+      freqMin: 60,
+      freqMax: 1200,
+      noteDiffTolerance: 2,
+      sampleSize: 30,
       sampleThreshold: 0.6,
       onNoteEnd: function(note, time, duration){
         console.log('End note', note.note, time, duration);
@@ -28,7 +32,10 @@ var mic2Notes = (function() {
     this.ctx = new AudioContext();
 
     // retrieve note frequencies
-    this.note_frequences = NOTE_FREQUENCIES || [];
+    this.note_frequences = _.filter(NOTE_FREQUENCIES, function(note){ return note.hz >= options.freqMin && note.hz <= options.freqMax }) || [];
+
+    // retrieve frequency index
+    this.frequencyIndex = this._getFrequencyIndex();
 
     if (this.note_frequences.length) this.listenForMicrophone();
   };
@@ -37,15 +44,17 @@ var mic2Notes = (function() {
     // var freqLen = freq.length; // should be 1024
     // initialize note to empty
     var _this = this,
+        freqMin = this.opt.freqMin,
+        freqMax = this.opt.freqMax,
         sampleThreshold = this.opt.sampleThreshold,
         sampleSize = this.opt.sampleSize,
         note = this._emptyNote();
 
-    // Map to tuples to preserve index
-    freq = _.map(freq, function(f, i){ return [i, f/255.0]; });
+    // Map to triples to preserve index [index, value, freq]
+    freq = _.map(freq, function(f, i){ return [i, f/255.0, _this.frequencyIndex[i]]; });
 
-    // Filter out values too low
-    freq = _.filter(freq, function(f){ return f[1] > sampleThreshold; });
+    // Filter out values too low or out of range
+    freq = _.filter(freq, function(f){ return f[1] > sampleThreshold && f[2] >= freqMin && f[2] <= freqMax; });
 
     if (freq.length >= sampleSize) {
 
@@ -136,18 +145,11 @@ var mic2Notes = (function() {
   // Get input from the microphone
   mic2Notes.prototype.listenForMicrophone = function(){
 
-    // firefox
-    if (navigator.mozGetUserMedia) {
-      navigator.mozGetUserMedia({audio: true},
-        this.onStream.bind(this),
-        this.onStreamError.bind(this));
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
 
-    // chrome/safari
-    } else if (navigator.webkitGetUserMedia) {
-      navigator.webkitGetUserMedia({audio: true},
-        this.onStream.bind(this),
-        this.onStreamError.bind(this));
-    }
+    navigator.getUserMedia({audio: true},
+      this.onStream.bind(this),
+      this.onStreamError.bind(this));
   };
 
   mic2Notes.prototype.listenOn = function(){
@@ -190,6 +192,17 @@ var mic2Notes = (function() {
 
   mic2Notes.prototype._getFFTBinCount = function(){
     return this.opt.fftsize / 2;
+  };
+
+  mic2Notes.prototype._getFrequencyIndex = function(){
+    var FFTBinCount = this._getFFTBinCount();
+    var index = [];
+
+    for (var i=0; i<FFTBinCount; i++) {
+      index.push(this._indexToFreq(i));
+    }
+
+    return index;
   };
 
   mic2Notes.prototype._indexToFreq = function(index) {
