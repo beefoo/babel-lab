@@ -1,44 +1,37 @@
 /*
- Microphone To Music Notes
-   Listens to frequency data from microphone and emits music notes
+ Stream To Music Notes
+   Listens to frequency data from audio stream and emits music notes
    Heavily inspired by: https://github.com/borismus/spectrogram
    and: https://github.com/cwilso/PitchDetect
 */
-var mic2Notes = (function() {
-  function mic2Notes(options) {
+var stream2Notes = (function() {
+  function stream2Notes(options) {
     var defaults = {
       fftsize: 2048,
+      frequencyMin: 40, // https://en.wikipedia.org/wiki/Pitch_detection_algorithm#Fundamental_frequency_of_speech
+      frequencyMax: 600,
       minRMS: 0.01,
+      notes: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
       pitchCorrelationThreshold: 0.9,
-      onNoteEnd: function(note, time, duration){
-        console.log('End note', note.key, time, duration);
-      },
-      onNoteStart: function(note, time){
-        console.log('Start note', note.key, time);
-      },
-      onNoteUpdate: function(note, time, duration){
-        console.log('Update note', note.key, time, duration);
-      }
+      onNoteEnd: function(note, time, duration){},
+      onNoteStart: function(note, time){},
+      onNoteUpdate: function(note, time, duration){}
     };
-    var options = _.extend(defaults, options);
-    this.init(options);
+    this.opt = _.extend(defaults, options);
+    this.init();
   }
 
-  mic2Notes.prototype.init = function(options){
-    this.opt = options;
-
+  stream2Notes.prototype.init = function(){
     // init audio context
     var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
     this.ctx = new AudioContext();
     this.sampleRate = this.ctx.sampleRate;
 
-    // retrieve notes
-    this.notes = options.notes;
-
-    this.listenForMicrophone();
+    // init pitch buffer
+    this.pitch_buffer = [];
   };
 
-  mic2Notes.prototype.freqToPitch = function(freq){
+  stream2Notes.prototype.freqToPitch = function(freq){
     var freqLen = freq.length,
         maxSamples = Math.floor(freqLen/2),
         sampleRate = this.sampleRate,
@@ -85,7 +78,7 @@ var mic2Notes = (function() {
     return pitch;
   };
 
-  mic2Notes.prototype.listen = function(){
+  stream2Notes.prototype.listen = function(){
     // stop listening
     if (!this.listening) {
       if (this.lastTime) this.endTime = this.lastTime;
@@ -109,7 +102,7 @@ var mic2Notes = (function() {
     var note = this.pitchToNote(pitch);
 
     // note has changed
-    if (!this.lastNote || this.lastNote.key != note.key) {
+    if (!this.lastNote || this.lastNote != note) {
       if (this.lastNote && this.noteStartTime) {
         var noteDuration = now - this.noteStartTime;
         this.opt.onNoteEnd(this.lastNote, now, noteDuration);
@@ -125,17 +118,7 @@ var mic2Notes = (function() {
     // setTimeout(function(){_this.listen();}, 2000);
   };
 
-  // Get input from the microphone
-  mic2Notes.prototype.listenForMicrophone = function(){
-
-    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
-    navigator.getUserMedia({audio: true},
-      this.onStream.bind(this),
-      this.onStreamError.bind(this));
-  };
-
-  mic2Notes.prototype.listenOn = function(){
+  stream2Notes.prototype.listenOn = function(){
     // reset times
     this.lastTime = false;
     this.endTime = false;
@@ -145,14 +128,14 @@ var mic2Notes = (function() {
     this.listen();
   };
 
-  mic2Notes.prototype.listenOff = function(){
+  stream2Notes.prototype.listenOff = function(){
     this.listening = false;
   };
 
-  mic2Notes.prototype.pitchToNote = function(pitch){
-    var notes = this.notes,
+  stream2Notes.prototype.pitchToNote = function(pitch){
+    var notes = this.opt.notes,
         noteLen = notes.length,
-        note = this._emptyNote();
+        note = '--';
 
     if (pitch > 0) {
       var noteNum = 12 * (Math.log(pitch/440)/Math.log(2));
@@ -164,7 +147,7 @@ var mic2Notes = (function() {
   };
 
   // Setup analyzer after microphone stream is initialized
-  mic2Notes.prototype.onStream = function(stream){
+  stream2Notes.prototype.onStream = function(stream){
     var input = this.ctx.createMediaStreamSource(stream);
     var analyzer = this.ctx.createAnalyser();
 
@@ -179,15 +162,12 @@ var mic2Notes = (function() {
     this.listenOn();
   };
 
-  mic2Notes.prototype.onStreamError = function(e){
-    alert(e);
+  stream2Notes.prototype.onStreamError = function(e){
+    console.log(e);
+    alert('Error: '+e.name+' (code '+e.code+')');
   };
 
-  mic2Notes.prototype._emptyNote = function(){
-    return _.clone({key: "--", midi: -1});
-  };
-
-  mic2Notes.prototype._rootMeanSquare = function(freq) {
+  stream2Notes.prototype._rootMeanSquare = function(freq) {
     var rms = 0,
         freqLen = freq.length;
 
@@ -199,6 +179,6 @@ var mic2Notes = (function() {
     return Math.sqrt(rms/freqLen);
   };
 
-  return mic2Notes;
+  return stream2Notes;
 
 })();

@@ -10,18 +10,17 @@ app.views.Speech2Music = Backbone.View.extend({
     var _this = this;
 
     var m2n = new mic2Notes({
-      notes: NOTES,
       onNoteEnd: function(note, time, duration){
-        // console.log('End note', note.key, time, duration);
-        // $('#note').text(note.key);
+        // console.log('End note', note, time, duration);
+        // $('#note').text(note);
       },
       onNoteStart: function(note, time){
-        // console.log('Start note', note.key, time);
-        _this.$('#note').text(note.key);
+        // console.log('Start note', note, time);
+        _this.$('#note').text(note);
       },
       onNoteUpdate: function(note, time, duration){
-        // console.log('End note', note.key, time, duration);
-        _this.$('#note').text(note.key);
+        // console.log('End note', note, time, duration);
+        // _this.$('#note').text(note);
       }
     });
   },
