@@ -129,12 +129,13 @@ $(function() {
 var stream2Notes = (function() {
   function stream2Notes(options) {
     var defaults = {
+      correlationMin: 0.9,
       fftsize: 2048,
       frequencyMin: 40, // https://en.wikipedia.org/wiki/Pitch_detection_algorithm#Fundamental_frequency_of_speech
       frequencyMax: 600,
-      minRMS: 0.01,
+      minRms: 0.01,
       notes: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
-      pitchCorrelationThreshold: 0.9,
+      stopAfterDetection: false,
       onNoteEnd: function(note, time, duration){},
       onNoteStart: function(note, time){},
       onNoteUpdate: function(note, time, duration){}
@@ -148,20 +149,20 @@ var stream2Notes = (function() {
     var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
     this.ctx = new AudioContext();
     this.sampleRate = this.ctx.sampleRate;
-
-    // init pitch buffer
-    this.pitch_buffer = [];
   };
 
-  stream2Notes.prototype.freqToPitch = function(freq){
-    var freqLen = freq.length,
-        maxSamples = Math.floor(freqLen/2),
+  // Autocorrelation algorithm snagged from: https://github.com/cwilso/PitchDetect
+  stream2Notes.prototype.autoCorrelate = function(buf){
+    var bufLen = buf.length,
+        periods = this.periods,
+        periodLen = periods.length,
+        maxSamples = this.maxSamples,
         sampleRate = this.sampleRate,
-        pitchCorrelationThreshold = this.opt.pitchCorrelationThreshold;
+        minCorrelation = this.opt.correlationMin;
 
     // check to see if enough signal
-    var rms = this._rootMeanSquare(freq);
-    if (rms < this.opt.minRMS) return -1;
+    var rms = this._rootMeanSquare(buf);
+    if (rms < this.opt.minRms) return -1;
 
     var pitch = -1;
     var best_offset = -1;
@@ -170,15 +171,16 @@ var stream2Notes = (function() {
     var correlations = new Array(maxSamples);
 
     var lastCorrelation=1;
-    for (var offset = 0; offset < maxSamples; offset++) {
 
+    for (i=0; i<periodLen; i++) {
+      var offset = periods[i];
       var correlation = 0;
-      for (var i=0; i<maxSamples; i++) {
-        correlation += Math.abs((freq[i])-(freq[i+offset]));
+      for (var j=0; j<maxSamples; j++) {
+        correlation += Math.abs((buf[j])-(buf[j+offset]));
       }
       correlation = 1 - (correlation/maxSamples);
       correlations[offset] = correlation;
-      if ((correlation > pitchCorrelationThreshold) && (correlation > lastCorrelation)) {
+      if ((correlation > minCorrelation) && (correlation > lastCorrelation)) {
         foundGoodCorrelation = true;
         if (correlation > best_correlation) {
           best_correlation = correlation;
@@ -192,12 +194,16 @@ var stream2Notes = (function() {
       }
       lastCorrelation = correlation;
     }
-    if (best_correlation > this.opt.minRMS) {
+    if (best_correlation > 0.01) {
       // console.log("f = " + sampleRate/best_offset + "Hz (rms: " + rms + " confidence: " + best_correlation + ")")
       pitch = sampleRate/best_offset;
     }
 
     return pitch;
+  };
+
+  stream2Notes.prototype.getOption = function(name){
+    return this.opt[name];
   };
 
   stream2Notes.prototype.listen = function(){
@@ -214,12 +220,12 @@ var stream2Notes = (function() {
     else this.startTime = now;
     this.lastTime = now;
 
-    // put frequency data into buffer (1/2 of fftsize)
-    var buffer = new Float32Array(this.analyzer.frequencyBinCount);
+    // put frequency data into buffer
+    var buffer = new Float32Array(this.bufferLen);
     this.analyzer.getFloatTimeDomainData(buffer);
 
-    // retrieve pitch
-    var pitch = this.freqToPitch(buffer);
+    // retrieve pitch via autocorrelation
+    var pitch = this.autoCorrelate(buffer);
     // retrieve note
     var note = this.pitchToNote(pitch);
 
@@ -279,6 +285,12 @@ var stream2Notes = (function() {
     // Connect graph
     input.connect(analyzer);
     this.analyzer = analyzer;
+    this.bufferLen = this.analyzer.frequencyBinCount; // should be 1/2 fftSize
+    this.maxSamples = Math.floor(this.bufferLen/2);
+    this.updatePeriods();
+
+    // init pitch buffer
+    this.pitch_buffer = [];
 
     // And listen
     this.listenOn();
@@ -287,6 +299,33 @@ var stream2Notes = (function() {
   stream2Notes.prototype.onStreamError = function(e){
     console.log(e);
     alert('Error: '+e.name+' (code '+e.code+')');
+  };
+
+  stream2Notes.prototype.setFrequencyRange = function(frequencyMin, frequencyMax){
+    this.opt.frequencyMin = frequencyMin;
+    this.opt.frequencyMax = frequencyMax;
+
+    this.updatePeriods();
+  };
+
+  stream2Notes.prototype.setOption = function(name, value){
+    this.opt[name] = value;
+  };
+
+  stream2Notes.prototype.updatePeriods = function(){
+    // Determine min/max period
+    var minPeriod = this.opt.minPeriod || 2;
+    var maxPeriod = this.opt.maxPeriod || this.maxSamples;
+    if(this.opt.frequencyMin) maxPeriod = Math.floor(this.sampleRate / this.opt.frequencyMin);
+    if(this.opt.frequencyMax) minPeriod = Math.ceil(this.sampleRate / this.opt.frequencyMax);
+    maxPeriod = Math.min(maxPeriod, this.maxSamples);
+    minPeriod = Math.max(2, minPeriod);
+
+    // init periods
+    this.periods = [];
+    for(var i = minPeriod; i <= maxPeriod; i++) {
+      this.periods.push(i);
+    }
   };
 
   stream2Notes.prototype._extend = function(out) {
@@ -302,16 +341,16 @@ var stream2Notes = (function() {
     return out;
   };
 
-  stream2Notes.prototype._rootMeanSquare = function(freq) {
+  stream2Notes.prototype._rootMeanSquare = function(arr) {
     var rms = 0,
-        freqLen = freq.length;
+        arrLen = arr.length;
 
-    for (var i=0; i<freqLen; i++) {
-      var val = freq[i];
+    for (var i=0; i<arrLen; i++) {
+      var val = arr[i];
       rms += val * val;
     }
 
-    return Math.sqrt(rms/freqLen);
+    return Math.sqrt(rms/arrLen);
   };
 
   return stream2Notes;
