@@ -1,12 +1,15 @@
-app.views.Speech2Music = Backbone.View.extend({
+var Speech2MusicView = (function() {
+  function Speech2MusicView(options) {
+    var defaults = {};
+    this.opt = _.extend(defaults, options);
+    this.init();
+  }
 
-  el: '#main',
-
-  initialize: function(data){
+  Speech2MusicView.prototype.init = function(){
     this.loadMic2Notes();
-  },
+  };
 
-  loadMic2Notes: function(){
+  Speech2MusicView.prototype.loadMic2Notes = function(){
     var _this = this;
 
     var m2n = new mic2Notes({
@@ -16,17 +19,15 @@ app.views.Speech2Music = Backbone.View.extend({
       },
       onNoteStart: function(note, time){
         // console.log('Start note', note, time);
-        _this.$('#note').text(note);
+        $('#note').text(note);
       },
       onNoteUpdate: function(note, time, duration){
         // console.log('End note', note, time, duration);
-        // _this.$('#note').text(note);
+        // $('#note').text(note);
       }
     });
-  },
+  };
 
-  render: function() {
-    return this;
-  }
+  return Speech2MusicView;
 
-});
+})();

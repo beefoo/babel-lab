@@ -17,7 +17,7 @@ var stream2Notes = (function() {
       onNoteStart: function(note, time){},
       onNoteUpdate: function(note, time, duration){}
     };
-    this.opt = _.extend(defaults, options);
+    this.opt = this._extend(defaults, options);
     this.init();
   }
 
@@ -165,6 +165,19 @@ var stream2Notes = (function() {
   stream2Notes.prototype.onStreamError = function(e){
     console.log(e);
     alert('Error: '+e.name+' (code '+e.code+')');
+  };
+
+  stream2Notes.prototype._extend = function(out) {
+    out = out || {};
+    for (var i = 1; i < arguments.length; i++) {
+      if (!arguments[i])
+        continue;
+      for (var key in arguments[i]) {
+        if (arguments[i].hasOwnProperty(key))
+          out[key] = arguments[i][key];
+      }
+    }
+    return out;
   };
 
   stream2Notes.prototype._rootMeanSquare = function(freq) {
