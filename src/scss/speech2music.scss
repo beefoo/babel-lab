@@ -4,3 +4,53 @@
 @import "normalize";
 @import "animations";
 @import "common";
+
+$staffHeight: 100px;
+$staffWidth: 100px;
+$staffThickness: 2px;
+$staffLineHeight: ($staffHeight - $staffThickness * 5) / 4;
+$staffColor: #333;
+
+.notes {
+  width: 100%;
+  padding: 20px;
+  @include box-sizing();
+  @include clearfix();
+
+  .note-container {
+    float: left;
+    position: relative;
+    width: $staffWidth;
+    height: $staffHeight;
+    margin-top: 100px;
+    border-top: $staffThickness solid $staffColor;
+    border-bottom: $staffThickness solid $staffColor;
+    @include box-sizing();
+
+    // middle of staff
+    &:before,
+    &:after {
+      content: ' ';
+      display: block;
+      position: absolute;
+      width: 100%;
+      left: 0;
+    }
+    &:before {
+      top: percentage(($staffLineHeight+$staffThickness*2)/$staffHeight);
+      height: percentage(($staffThickness+$staffLineHeight*2)/$staffHeight);
+      border-top: $staffThickness solid $staffColor;
+      border-bottom: $staffThickness solid $staffColor;
+    }
+    &:after {
+      top: 50%;
+      height: 0px;
+      border-top: ($staffThickness/2) solid $staffColor;
+      border-bottom: ($staffThickness/2) solid $staffColor;
+    }
+
+    .note {
+
+    }
+  }
+}

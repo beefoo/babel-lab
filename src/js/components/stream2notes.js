@@ -16,7 +16,7 @@ var stream2Notes = (function() {
       frequencyMax: 600,
       minRms: 0.01, // min signal
       noteDurationMin: 10, // in milliseconds
-      notes: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
+      notes: ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"],
       onNoteEnd: function(note, time, duration){},
       onNoteStart: function(note, time){},
       onNoteUpdate: function(note, time, duration){}

@@ -89,9 +89,10 @@ return b?(parseFloat(Sa(a,"marginLeft"))||(n.contains(a.ownerDocument,a)?a.getBo
 })();
 
 window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["header.ejs"] = '<a href="/">Babel Lab</a>';
+window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["sheetmusic.ejs"] = '<div id="notes" class="notes"></div>';
+window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["sheetmusic_note.ejs"] = '<div class="note-container <%= active ? \'active\': \'\' %>">  <div class="note <%= note %>"></div></div>';
 window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["header.ejs"] = '<a href="/">Babel Lab</a>';
 window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["stream2notes_settings.ejs"] = '<div class="input-group">  <label for="frequencyMin">Min Frequency</label>  <input type="number" name="frequencyMin" min="2" max="24000" step="5" value="<%= frequencyMin %>" />  <label for="frequencyMax">Max Frequency</label>  <input type="number" name="frequencyMax" min="2" max="24000" step="5" value="<%= frequencyMax %>" /></div><div class="input-group">  <label for="minRms">Min Signal Strength</label>  <input type="number" name="minRms" min="0" max="1" step="0.01" value="<%= minRms %>" /></div>';
-window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["sheetmusic.ejs"] = '<h1 id="note">--</h1>';
 /*
  Stream To Music Notes
    Listens to frequency data from audio stream and emits music notes
@@ -110,7 +111,7 @@ var stream2Notes = (function() {
       frequencyMax: 600,
       minRms: 0.01, // min signal
       noteDurationMin: 10, // in milliseconds
-      notes: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
+      notes: ["C", "Cs", "D", "Ds", "E", "F", "Fs", "G", "Gs", "A", "As", "B"],
       onNoteEnd: function(note, time, duration){},
       onNoteStart: function(note, time){},
       onNoteUpdate: function(note, time, duration){}
@@ -442,7 +443,8 @@ var Speech2MusicView = (function() {
   function Speech2MusicView(options) {
     var defaults = {
       el: '#main',
-      template: _.template(TEMPLATES['sheetmusic.ejs'])
+      template: _.template(TEMPLATES['sheetmusic.ejs']),
+      template_note: _.template(TEMPLATES['sheetmusic_note.ejs'])
     };
     this.opt = _.extend(defaults, options);
     this.init();
@@ -451,6 +453,8 @@ var Speech2MusicView = (function() {
   Speech2MusicView.prototype.init = function(){
     this.$el = $(this.opt.el);
     this.template = this.opt.template;
+    this.template_note = this.opt.template_note;
+
     this.loadMic2Notes();
     this.settingsView = new Stream2NotesSettingsView({
       streamSettings: this.m2n.getOptions()
@@ -479,20 +483,27 @@ var Speech2MusicView = (function() {
   };
 
   Speech2MusicView.prototype.onNoteEnd = function(note, time, duration){
-
+    this.$notes.find('.note.active').text(note + '[' + duration + ']');
   };
 
   Speech2MusicView.prototype.onNoteStart = function(note, time){
-    this.$el.find('#note').text(note);
+    var $note = this.template_note({
+      note: note,
+      active: true
+    });
+
+    this.$notes.children('.note').removeClass('active');
+    this.$notes.append($note);
   };
 
   Speech2MusicView.prototype.onNoteUpdate = function(note, time, duration){
-
+    this.$notes.find('.note.active').text(note);
   };
 
   Speech2MusicView.prototype.render = function(){
     this.$el.html(this.template(this.opt));
     this.settingsView.render();
+    this.$notes = this.$el.find('#notes');
   };
 
   return Speech2MusicView;

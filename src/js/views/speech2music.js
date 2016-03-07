@@ -2,7 +2,8 @@ var Speech2MusicView = (function() {
   function Speech2MusicView(options) {
     var defaults = {
       el: '#main',
-      template: _.template(TEMPLATES['sheetmusic.ejs'])
+      template: _.template(TEMPLATES['sheetmusic.ejs']),
+      template_note: _.template(TEMPLATES['sheetmusic_note.ejs'])
     };
     this.opt = _.extend(defaults, options);
     this.init();
@@ -11,6 +12,8 @@ var Speech2MusicView = (function() {
   Speech2MusicView.prototype.init = function(){
     this.$el = $(this.opt.el);
     this.template = this.opt.template;
+    this.template_note = this.opt.template_note;
+
     this.loadMic2Notes();
     this.settingsView = new Stream2NotesSettingsView({
       streamSettings: this.m2n.getOptions()
@@ -39,20 +42,27 @@ var Speech2MusicView = (function() {
   };
 
   Speech2MusicView.prototype.onNoteEnd = function(note, time, duration){
-
+    this.$notes.find('.note.active').text(note + '[' + duration + ']');
   };
 
   Speech2MusicView.prototype.onNoteStart = function(note, time){
-    this.$el.find('#note').text(note);
+    var $note = this.template_note({
+      note: note,
+      active: true
+    });
+
+    this.$notes.children('.note').removeClass('active');
+    this.$notes.append($note);
   };
 
   Speech2MusicView.prototype.onNoteUpdate = function(note, time, duration){
-
+    this.$notes.find('.note.active').text(note);
   };
 
   Speech2MusicView.prototype.render = function(){
     this.$el.html(this.template(this.opt));
     this.settingsView.render();
+    this.$notes = this.$el.find('#notes');
   };
 
   return Speech2MusicView;
