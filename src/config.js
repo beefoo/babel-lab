@@ -18,7 +18,7 @@ module.exports = {
   },
   templates: {
     src: sourceAssets + "/templates/**/*.ejs",
-    dest: publicAssets + '/js/',
+    dest: sourceAssets + '/js/',
     outputFile: 'templates.js',
     variable: 'TEMPLATES',
     opt: {}

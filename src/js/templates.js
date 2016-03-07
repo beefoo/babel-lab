@@ -1,0 +1,4 @@
+window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["header.ejs"] = '<a href="/">Babel Lab</a>';
+window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["header.ejs"] = '<a href="/">Babel Lab</a>';
+window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["stream2notes_settings.ejs"] = '<div class="input-group">  <label for="frequencyMin">Min Frequency</label>  <input type="number" name="frequencyMin" min="2" max="24000" step="5" value="<%= frequencyMin %>" />  <label for="frequencyMax">Max Frequency</label>  <input type="number" name="frequencyMax" min="2" max="24000" step="5" value="<%= frequencyMax %>" /></div><div class="input-group">  <label for="minRms">Min Signal Strength</label>  <input type="number" name="minRms" min="0" max="1" step="0.01" value="<%= minRms %>" /></div>';
+window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["sheetmusic.ejs"] = '<h1 id="note">--</h1>';

@@ -9,11 +9,14 @@ var stream2Notes = (function() {
     var defaults = {
       correlationMin: 0.9,
       fftsize: 2048,
-      frequencyMin: 40, // https://en.wikipedia.org/wiki/Pitch_detection_algorithm#Fundamental_frequency_of_speech
+      // fundamental frequency of speech can vary from 40 Hz for low-pitched male voices
+      // to 600 Hz for children or high-pitched female voices
+      // https://en.wikipedia.org/wiki/Pitch_detection_algorithm#Fundamental_frequency_of_speech
+      frequencyMin: 40,
       frequencyMax: 600,
-      minRms: 0.01,
+      minRms: 0.01, // min signal
+      noteDurationMin: 10, // in milliseconds
       notes: ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
-      stopAfterDetection: false,
       onNoteEnd: function(note, time, duration){},
       onNoteStart: function(note, time){},
       onNoteUpdate: function(note, time, duration){}
@@ -82,6 +85,15 @@ var stream2Notes = (function() {
 
   stream2Notes.prototype.getOption = function(name){
     return this.opt[name];
+  };
+
+  stream2Notes.prototype.getOptions = function(){
+    var opt = {};
+    for (var key in this.opt) {
+      if (typeof this.opt[key] !== "function")
+        opt[key] = this.opt[key];
+    }
+    return opt;
   };
 
   stream2Notes.prototype.listen = function(){
@@ -179,15 +191,13 @@ var stream2Notes = (function() {
     alert('Error: '+e.name+' (code '+e.code+')');
   };
 
-  stream2Notes.prototype.setFrequencyRange = function(frequencyMin, frequencyMax){
-    this.opt.frequencyMin = frequencyMin;
-    this.opt.frequencyMax = frequencyMax;
-
-    this.updatePeriods();
-  };
-
   stream2Notes.prototype.setOption = function(name, value){
     this.opt[name] = value;
+
+    // if property is frequency, update periods
+    if (name.lastIndexOf('frequency', 0) === 0) {
+      this.updatePeriods();
+    }
   };
 
   stream2Notes.prototype.updatePeriods = function(){
