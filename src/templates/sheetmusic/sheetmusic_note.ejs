@@ -1,3 +1,4 @@
 <div class="note-container <%= active ? 'active': '' %>">
-  <div class="note <%= note %>"></div>
+  <span></span><span></span><span></span><span></span><span></span>
+  <div class="<%= note=='--' ? 'rest' : 'note '+note %>"></div>
 </div>

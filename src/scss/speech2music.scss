@@ -6,9 +6,9 @@
 @import "common";
 
 $staffHeight: 100px;
-$staffWidth: 100px;
 $staffThickness: 2px;
-$staffLineHeight: ($staffHeight - $staffThickness * 5) / 4;
+$staffLineHeight: $staffHeight / 4;
+$staffWidth: $staffLineHeight + 5px;
 $staffColor: #333;
 
 .notes {
@@ -23,34 +23,72 @@ $staffColor: #333;
     width: $staffWidth;
     height: $staffHeight;
     margin-top: 100px;
-    border-top: $staffThickness solid $staffColor;
-    border-bottom: $staffThickness solid $staffColor;
     @include box-sizing();
 
-    // middle of staff
-    &:before,
-    &:after {
-      content: ' ';
+    // staff
+    > span {
       display: block;
       position: absolute;
       width: 100%;
       left: 0;
-    }
-    &:before {
-      top: percentage(($staffLineHeight+$staffThickness*2)/$staffHeight);
-      height: percentage(($staffThickness+$staffLineHeight*2)/$staffHeight);
-      border-top: $staffThickness solid $staffColor;
-      border-bottom: $staffThickness solid $staffColor;
-    }
-    &:after {
-      top: 50%;
-      height: 0px;
+      top: 0;
       border-top: ($staffThickness/2) solid $staffColor;
       border-bottom: ($staffThickness/2) solid $staffColor;
+
+      &:nth-child(2) { top: 25%; }
+      &:nth-child(3) { top: 50%; }
+      &:nth-child(4) { top: 75%; }
+      &:nth-child(5) { top: 100%; }
     }
 
     .note {
+      position: absolute;
+      width: $staffLineHeight;
+      height: $staffLineHeight;
+      line-height: $staffLineHeight;
+      text-align: center;
+      @include border-radius(50%);
+      background: $black;
+      color: $white;
+      left: 50%;
+      margin-left: -$staffLineHeight;
 
+      &.C, &.Cs {
+        bottom: -37.5%;
+        &:after {
+          content: ' ';
+          position: absolute;
+          width: 150%;
+          left: 50%;
+          top: 50%;
+          margin-left: -75%;
+          border-top: ($staffThickness/2) solid $black;
+          border-bottom: ($staffThickness/2) solid $black;
+        }
+      }
+      &.D, &.Ds {
+        bottom: -25%;
+      }
+      &.E {
+        bottom: -12.5%;
+      }
+      &.F, &.Fs {
+        bottom: 0;
+      }
+      &.G, &.Gs {
+        bottom: 12.5%;
+      }
+      &.A, &.As {
+        bottom: 25%;
+      }
+      &.B {
+        bottom: 37.5%;
+      }
+      &.Cs, &.Ds, &.Fs, &.Gs, &.As {
+        &:before {
+          content: '#';
+        }
+      }
     }
   }
 }

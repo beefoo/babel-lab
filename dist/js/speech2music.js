@@ -89,9 +89,9 @@ return b?(parseFloat(Sa(a,"marginLeft"))||(n.contains(a.ownerDocument,a)?a.getBo
 })();
 
 window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["header.ejs"] = '<a href="/">Babel Lab</a>';
-window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["sheetmusic.ejs"] = '<div id="notes" class="notes"></div>';
-window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["sheetmusic_note.ejs"] = '<div class="note-container <%= active ? \'active\': \'\' %>">  <div class="note <%= note %>"></div></div>';
 window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["header.ejs"] = '<a href="/">Babel Lab</a>';
+window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["sheetmusic.ejs"] = '<div id="notes" class="notes"></div>';
+window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["sheetmusic_note.ejs"] = '<div class="note-container <%= active ? \'active\': \'\' %>">  <span></span><span></span><span></span><span></span><span></span>  <div class="<%= note==\'--\' ? \'rest\' : \'note \'+note %>"></div></div>';
 window.TEMPLATES=window.TEMPLATES || {}; window.TEMPLATES["stream2notes_settings.ejs"] = '<div class="input-group">  <label for="frequencyMin">Min Frequency</label>  <input type="number" name="frequencyMin" min="2" max="24000" step="5" value="<%= frequencyMin %>" />  <label for="frequencyMax">Max Frequency</label>  <input type="number" name="frequencyMax" min="2" max="24000" step="5" value="<%= frequencyMax %>" /></div><div class="input-group">  <label for="minRms">Min Signal Strength</label>  <input type="number" name="minRms" min="0" max="1" step="0.01" value="<%= minRms %>" /></div>';
 /*
  Stream To Music Notes
