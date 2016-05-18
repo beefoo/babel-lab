@@ -2,7 +2,7 @@
 
 # Description: generates an svg file based on Praat pitch data
 # Example usage:
-#   python pitch_to_svg.py data/open_audio_weekend.Pitch output/open_audio_weekend.svg 2000 400 80 240 0.1 0.1 6
+#   python pitch_to_svg.py data/open_audio_weekend.Pitch output/open_audio_weekend_pitch.svg 1200 240 80 240 0.1 0.1 6
 
 from pprint import pprint
 from praat import fileToPitchData

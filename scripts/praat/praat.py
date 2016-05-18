@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# File is in "short" Praat format
+# File is in "short" .Pitch Praat format
 # See: http://www.fon.hum.uva.nl/praat/manual/Pitch.html
 def fileToPitchData(filename):
 
@@ -59,3 +59,28 @@ def fileToPitchData(filename):
             secondsFirstFrame = float(line)
 
     return frames
+
+# File is in "short" .Sound Praat format
+# See: http://www.fon.hum.uva.nl/praat/manual/Sound.html
+def fileToWavData(filename):
+
+    secondsStep = None # aka dx
+    secondsFirstFrame = None # aka x1
+    samples = []
+
+    for i, line in enumerate(open(filename,'r').readlines()):
+
+        # Main data
+        if i > 12 and line:
+            samples.append({
+                "start": secondsFirstFrame + len(samples) * secondsStep,
+                "amplitude": float(line)
+            })
+
+        # Definitions
+        elif i == 6:
+            secondsStep = float(line)
+        elif i == 7:
+            secondsFirstFrame = float(line)
+
+    return samples
