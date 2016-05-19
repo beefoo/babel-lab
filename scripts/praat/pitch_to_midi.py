@@ -2,13 +2,16 @@
 
 # Description: generates a midi file based on Praat pitch data
 # Example usage:
-#   python pitch_to_midi.py data/open_audio_weekend.Pitch output/open_audio_weekend.mid 80 240 0.1 0.1 10 100
+#   python pitch_to_midi.py data/open_audio_weekend.Pitch output/open_audio_weekend.mid 80 240 0.1 0.1 10 50
 
 import json
-from ..midiutil.MidiFile import MIDIFile
+from os import path
 from praat import fileToPitchData
 import sys
 import time
+
+sys.path.append( path.dirname( path.dirname( path.abspath(__file__) ) ) )
+from midiutil.MidiFile import MIDIFile
 
 # Input
 if len(sys.argv) < 7:
@@ -66,6 +69,8 @@ def getPitchData(pitch):
 def addToSequence(ms, duration, pitch):
   global sequence
   global MIN_NOTE_DURATION
+  global PRECISION
+
   if duration >= MIN_NOTE_DURATION:
     pd = getPitchData(pitch)
     sequence.append({
@@ -82,58 +87,37 @@ print "%s frames read from file %s" % (len(frames), INPUT_FILE)
 
 # Generate sequence
 pitch_queue = []
-start_ms = 0
+start_ms = None
+ms = None
 start_pitch = 0
-ms = 0
+
 for frame in frames:
     ms = int(round(frame["start"] * 1000))
+    if start_ms is None:
+        start_ms = ms
     candidate = frame["candidates"][0]
     pitch = candidate["frequency"]
     strength = candidate["strength"]
     intensity = frame["intensity"]
     isSilent = pitch < MIN_FREQ or pitch > MAX_FREQ or intensity < MIN_INTENSITY or strength < MIN_STRENGTH
+    isValid = not isSilent
     # reached a pause, add previous note queue
     if isSilent and len(pitch_queue) > 0:
       addToSequence(start_ms, ms-start_ms, mean(pitch_queue))
       pitch_queue = []
     # reached a note threshold, add previous note queue
-    elif pitch > 0 and abs(pitch-start_pitch) > FREQUENCY_NOTE_THRESHOLD and (ms-start_ms) > MIN_NOTE_DURATION and len(pitch_queue) > 0:
+    elif isValid and abs(pitch-start_pitch) > FREQUENCY_NOTE_THRESHOLD and (ms-start_ms) > MIN_NOTE_DURATION and len(pitch_queue) > 0:
       addToSequence(start_ms, ms-start_ms, mean(pitch_queue))
       pitch_queue = []
     # add pitch to note queue
-    elif pitch > 0:
+    elif isValid:
       if len(pitch_queue) <= 0:
         start_ms = ms
         start_pitch = pitch
       pitch_queue.append(pitch)
-
-# Read frequencies from file
-with open(INPUT_FILE, 'rb') as f:
-  r = csv.reader(f, delimiter=',')
-  pitch_queue = []
-  start_ms = 0
-  start_pitch = 0
-  ms = 0
-  for s, p in r:
-    if s and p:
-      ms = int(round(float(s) * 1000))
-      pitch = round(float(p), PRECISION)
-      # reached a pause, add previous note queue
-      if pitch <= 0 and len(pitch_queue) > 0:
-        addToSequence(start_ms, ms-start_ms, mean(pitch_queue))
-        pitch_queue = []
-      # reached a note threshold, add previous note queue
-      elif pitch > 0 and abs(pitch-start_pitch) > FREQUENCY_NOTE_THRESHOLD and (ms-start_ms) > MIN_NOTE_DURATION and len(pitch_queue) > 0:
-        addToSequence(start_ms, ms-start_ms, mean(pitch_queue))
-        pitch_queue = []
-      # add pitch to note queue
-      elif pitch > 0:
-        if len(pitch_queue) <= 0:
-          start_ms = ms
-          start_pitch = pitch
-        pitch_queue.append(pitch)
-  if len(pitch_queue) > 0:
-    addToSequence(start_ms, ms-start_ms, mean(pitch_queue))
+# Add last queue
+if (ms-start_ms) > MIN_NOTE_DURATION and len(pitch_queue) > 0:
+  addToSequence(start_ms, ms-start_ms, mean(pitch_queue))
 
 def msToBeats(ms):
   global BPM
@@ -171,13 +155,7 @@ if len(sequence) > 0:
     MyMIDI.addNote(track,channel,pitch,time,duration,volume)
 
   # And write it to disk.
-  binfile = open(OUTPUT_MIDI_FILE, 'wb')
+  binfile = open(OUTPUT_FILE, 'wb')
   MyMIDI.writeFile(binfile)
   binfile.close()
-  print('Successfully wrote to file: ' + OUTPUT_MIDI_FILE)
-
-# Write sequence to json file
-if len(sequence) > 0:
-  with open(OUTPUT_JSON_FILE, 'w') as outfile:
-    json.dump(sequence, outfile)
-    print('Successfully wrote to JSON file: '+OUTPUT_JSON_FILE)
+  print 'Successfully wrote to file: %s' % OUTPUT_FILE
