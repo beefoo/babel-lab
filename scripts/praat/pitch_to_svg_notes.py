@@ -2,8 +2,9 @@
 
 # Description: generates an svg file based on Praat pitch data
 # Example usage:
-#   python pitch_to_svg.py data/open_audio_weekend.Pitch output/open_audio_weekend_pitch.svg 1200 240 80 240 0.1 0.1 6
+#   python pitch_to_svg_notes.py data/open_audio_weekend.Pitch output/open_audio_weekend_pitch_notes.svg 1200 240 80 240 0.1 0.1 6
 
+import json
 from pprint import pprint
 from praat import fileToPitchData
 import svgwrite
@@ -24,8 +25,46 @@ MIN_INTENSITY = float(sys.argv[7])
 MIN_STRENGTH = float(sys.argv[8])
 MAX_RADIUS = int(sys.argv[9])
 
+# Config
+FREQUENCIES_FILE = "../../src/js/data/frequencies.json"
+# Based on: https://en.wikipedia.org/wiki/File:Scriabin-Circle.svg
+COLORS = {
+    "C": "red",
+    "C#": "purple",
+    "D": "yellow",
+    "D#": "violet",
+    "E": "skyblue",
+    "F": "crimson",
+    "F#": "slateblue",
+    "G": "orange",
+    "G#": "magenta",
+    "A": "green",
+    "A#": "rosybrown",
+    "B": "blue"
+}
+
+# Get frequency table
+json_data = open(FREQUENCIES_FILE)
+frequencies = json.load(json_data)
+
 def px(value):
     return "%spx" % value
+
+def getPitchData(pitch):
+  global frequencies
+  data = frequencies[0]
+  for i, f in enumerate(frequencies):
+    hz = float(f['hz'])
+    prev_hz = 0
+    if i > 0:
+      prev_hz = float(frequencies[i-1]['hz'])
+    if pitch < hz:
+      if prev_hz > 0 and abs(prev_hz-pitch) < abs(hz-pitch):
+        data = frequencies[i-1]
+      else:
+        data = f
+      break
+  return data
 
 # Retrieve pitch data from Praat file
 frames = fileToPitchData(INPUT_FILE)
@@ -46,7 +85,14 @@ for frame in frames:
         x = (frame["start"]/total_seconds) * TARGET_WIDTH - MAX_RADIUS
         y = (1.0-(topCandidate["frequency"]-MIN_FREQ)/(MAX_FREQ-MIN_FREQ)) * TARGET_HEIGHT
         radius = topCandidate["strength"] * MAX_RADIUS
-        circles.add(dwg.circle(center=(px(x), px(y)), r=px(radius), fill='black'))
+
+        # determine color
+        pd = getPitchData(topCandidate["frequency"])
+        note = pd["note"].split('-')[0]
+        note = ''.join([i for i in note if not i.isdigit()])
+        color = COLORS[note]
+
+        circles.add(dwg.circle(center=(px(x), px(y)), r=px(radius), fill=color, id=pd["note"]))
 
 # Save
 dwg.save()
